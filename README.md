@@ -26,7 +26,11 @@ node tools/new.mjs 知识卡 --domain 10-交能融合 --sub 01-能量调度 --ti
 node tools/new.mjs 踩坑卡 --domain 12-编程与工程 --sub CPP --title "shared_ptr 循环引用不释放"
 node tools/check.mjs          # 体检：断链、孤立卡、frontmatter 缺失、收件箱积压
 node tools/init.mjs           # 建骨架（幂等，不会覆盖已有内容）
+node tools/remote.mjs jjnz    # 一次性：配 GitHub 私有远端
 ```
+
+> 不带 `--title` 运行时进入交互模式，逐项询问。
+> 卡型：`知识卡 | 永久卡 | 问题卡 | 文献卡 | 踩坑卡 | 项目速览`
 
 ---
 
