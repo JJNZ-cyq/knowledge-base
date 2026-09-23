@@ -1,0 +1,942 @@
+/**
+ * init.mjs —— 知识库骨架初始化（幂等）
+ *
+ * 作用：建目录、建占位文件、安装模板。不覆盖任何已存在的内容。
+ * 用法：node tools/init.mjs
+ *
+ * 设计原则：只创建、不删除、不覆盖。重复执行安全。
+ */
+
+import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+// ─────────────────────────────────────────────────────────
+// 目录骨架
+// ─────────────────────────────────────────────────────────
+const DIRS = [
+  'docs',
+  '00-收件箱/灵感',
+  '00-收件箱/待读',
+  '00-收件箱/剪藏',
+
+  '10-交能融合/01-能量调度/知识卡',
+  '10-交能融合/01-能量调度/文献笔记',
+  '10-交能融合/02-交通流分配/知识卡',
+  '10-交能融合/02-交通流分配/文献笔记',
+  '10-交能融合/09-其他',
+  '10-交能融合/项目笔记',
+
+  '11-大模型/知识卡',
+  '11-大模型/文献笔记',
+  '11-大模型/项目笔记',
+
+  '12-编程与工程/CPP/语言特性',
+  '12-编程与工程/CPP/工程实践',
+  '12-编程与工程/Python/语言与生态',
+  '12-编程与工程/Python/科学计算',
+  '12-编程与工程/Python/优化建模',
+  '12-编程与工程/混合栈',
+  '12-编程与工程/项目笔记',
+
+  '15-优化方法论/建模范式',
+  '15-优化方法论/求解与工具',
+  '15-优化方法论/不确定性',
+
+  '19-交叉/大模型×交能融合',
+  '19-交叉/大模型×编程与工程',
+  '19-交叉/三元交叉',
+
+  '20-永久卡',
+  '30-问题卡',
+  '40-文献',
+  '50-代码项目',
+  '60-学习计划/周报',
+  '60-学习计划/复习',
+
+  '90-附件/cpp-snippets',
+  '99-归档',
+];
+
+// ─────────────────────────────────────────────────────────
+// 文件内容
+// ─────────────────────────────────────────────────────────
+
+/** 空目录占位：内容为所在路径，Obsidian 与 git 都会保留它 */
+const keep = (rel) => `# ${rel}\n\n此文件仅用于占位，防止空目录被 git 忽略。目录内有内容后可删除。\n`;
+
+const FILES = {
+  // ── 根 ──────────────────────────────────────────────
+  '.gitignore': `# ─── 大文件绝不入库（见 docs/设计方案.md §8.1）───
+*.pdf
+*.zip
+*.7z
+*.mp4
+*.mov
+*.iso
+*.exe
+
+# ─── Obsidian 本机状态 ───
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+.trash/
+
+# ─── 系统与临时文件 ───
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
+*.tmp
+*.bak
+
+# ─── Node ───
+node_modules/
+`,
+
+  'README.md': `# 📚 知识学习库
+
+> 个人知识库。**方向**：交能融合 · 大模型 · 编程与工程
+> **设计蓝图**见 \`docs/设计方案.md\`（改架构前必读）
+
+---
+
+## 一页速查
+
+\`\`\`
+入口只有一个：    00-收件箱
+每天只做两件事：  往收件箱丢东西 ／ 把一张卡写成"我自己的话"
+每周日做五件事：  清空收件箱 → 更新 NOW.md → 跑 check → 抽查 5 张旧卡 → push
+文献不放库内：    只写 zotero:<citekey>
+代码不放库内：    只写 repo:<url> @ <commit>
+交能融合只攻两块：01-能量调度 ／ 02-交通流分配
+判断学会没有：    不看原文，能不能讲给别人听懂
+\`\`\`
+
+---
+
+## 常驻命令
+
+\`\`\`powershell
+node tools/new.mjs 知识卡 --domain 10-交能融合 --sub 01-能量调度 --title "日前调度的滚动修正"
+node tools/new.mjs 踩坑卡 --domain 12-编程与工程 --sub CPP --title "shared_ptr 循环引用不释放"
+node tools/check.mjs          # 体检：断链、孤立卡、frontmatter 缺失、收件箱积压
+node tools/init.mjs           # 建骨架（幂等，不会覆盖已有内容）
+\`\`\`
+
+---
+
+## 目录地图
+
+| 目录 | 用途 |
+|---|---|
+| \`00-收件箱\` | **唯一入口**。任何东西先扔这里，不分类 |
+| \`10-交能融合\` | 领域 1 · 重点：能量调度、交通流分配 |
+| \`11-大模型\` | 领域 2 |
+| \`12-编程与工程\` | 领域 3 · C++ / Python / 混合栈 |
+| \`15-优化方法论\` | 横切方法论：建模范式、求解工具、不确定性 |
+| \`19-交叉\` | 两个顶层领域**相互增强**的内容 |
+| \`20-永久卡\` | 跨来源、可迁移的洞见 |
+| \`30-问题卡\` | 疑问驱动：现状 / 假设 / 验证 / 结论 |
+| \`40-文献\` | 文献索引、标签词表、阅读队列（**不含 PDF**） |
+| \`50-代码项目\` | 项目速览与源码导读（**不含源码**） |
+| \`60-学习计划\` | 周报、复习排期、里程碑 |
+| \`90-附件\` | 少量必须入库的图/片段；大文件被 gitignore |
+| \`99-归档\` | 死内容，不参与检索 |
+
+**库外（不放进来，只登记指针）**
+\`\`\`
+C:\\Users\\CYQ\\Zotero   →  PDF 本体 + 元数据
+E:\\repos               →  克隆的第三方项目
+E:\\projects            →  自己的代码项目
+\`\`\`
+
+---
+
+## 四种卡的判据
+
+| 卡型 | 合格判据 |
+|---|---|
+| 文献卡 | 能说清"作者主张什么 + 用什么方法证明 + 局限在哪" |
+| 知识卡 | 能不看原文，用自己的话讲给别人听懂 |
+| 永久卡 | 能与 ≥2 张别的卡建立非显然的关联 |
+| 问题卡 | 问题足够具体，能设计出一个验证动作 |
+
+**写不出来就是没到这一步，标 \`status: learning\`，别硬写也别标 mastered。**
+`,
+
+  // ── docs ────────────────────────────────────────────
+  'docs/NOW.md': `---
+title: 当前在学
+type: 导航
+updated: ${new Date().toISOString().slice(0, 10)}
+---
+
+# 🎯 当前在学（每周日更新，只留 3 件）
+
+> 规则：**最多 3 件**。想加第 4 件，必须先删掉一件。
+> 写完就停，不要在这份文件里做别的事。
+
+## 1. 
+- 目标：
+- 进度：
+- 卡在哪：
+
+## 2. 
+- 目标：
+- 进度：
+- 卡在哪：
+
+## 3. 
+- 目标：
+- 进度：
+- 卡在哪：
+
+---
+
+## 本周不做（明确排除，防止分心）
+
+- 
+
+## 最近一次维护
+- 日期：
+- 收件箱剩余条数：
+`,
+
+  'docs/ROADMAP.md': `---
+title: 学习路线图
+type: 导航
+updated: ${new Date().toISOString().slice(0, 10)}
+---
+
+# 🗺️ 想学清单（只登记，不排期）
+
+> 与 \`NOW.md\` 的区别：**NOW 是"在做的 3 件"，这里是"想做但还没开始的"。**
+> 想到什么就往这里加一行，不需要分类，不需要写详细。等 NOW 空出来时从这里挑。
+
+## 交能融合
+
+| 想学什么 | 为什么想学 | 优先级 | 备注 |
+|---|---|---|---|
+| 交通流分配的经典算法族 | 是能量调度的上游输入 | 高 | Frank-Wolfe / VI / DTA |
+| 含充电的路径选择建模 | 打通"交通流 → 充电负荷" | 高 | |
+| 日前-日内-实时三级调度 | 实际工程必需 | 中 | |
+
+## 大模型
+
+| 想学什么 | 为什么想学 | 优先级 | 备注 |
+|---|---|---|---|
+|  |  |  | |
+
+## 编程与工程
+
+| 想学什么 | 为什么想学 | 优先级 | 备注 |
+|---|---|---|---|
+| CMake 现代写法 | 目前项目工程化不足 | 中 | |
+| C++ 内存模型与并发 | 想写高性能仿真内核 | 中 | |
+
+## 优化方法论
+
+| 想学什么 | 为什么想学 | 优先级 | 备注 |
+|---|---|---|---|
+| 分布鲁棒优化的 Wasserstein 球 | 近三年文献高频 | 高 | |
+| 双层规划的 KKT 转化条件 | 存量文献大量使用 | 高 | |
+
+## 暂不考虑
+
+- 
+`,
+
+  'docs/命名与元数据规范.md': `---
+title: 命名与元数据规范
+type: 规范
+updated: ${new Date().toISOString().slice(0, 10)}
+---
+
+# 命名与元数据规范
+
+> 本文件是 \`设计方案.md\` §7 的可执行版本。**改字段前先改设计方案，再改这里。**
+
+## 一、frontmatter 通用字段
+
+\`\`\`yaml
+---
+title:      卡片标题                        # 必填
+type:       知识卡                          # 必填：灵感|文献卡|知识卡|永久卡|问题卡|踩坑卡|项目速览|导航|规范
+domain:     10-交能融合                     # 必填，受控（见下）
+subdomain:  01-能量调度                     # 选填，领域内二级目录
+tags:       [日前调度, 滚动优化]             # 必填，受控词表见 40-文献/标签体系.md
+status:     learning                       # 必填：inbox|learning|mastered|archived
+created:    2026-09-23
+updated:    2026-09-23
+source:     zotero:li2025evcharging         # 选填：zotero:|url:|repo:|book:
+confidence: 3                              # 选填：1-5
+reviewed:                                  # 选填：上次主动回忆日期
+---
+\`\`\`
+
+### domain 受控取值（只有 6 个）
+
+\`\`\`
+10-交能融合    11-大模型    12-编程与工程    15-优化方法论    19-交叉    20-永久卡
+\`\`\`
+
+## 二、分类型追加字段
+
+| 卡型 | 追加字段 |
+|---|---|
+| 文献卡 | \`problem\` / \`method\` / \`network\` / \`solver\` / \`data\` / \`gap\` |
+| 踩坑卡 | \`symptom\` / \`cause\` / \`minimal_repro\` |
+| 知识卡 | \`prereq: []\` / \`used_in: []\` |
+| 永久卡 | \`derived_from: []\` |
+| 问题卡 | \`hypothesis\` / \`verify_by\` / \`conclusion\` / \`closed_at\` |
+| 项目速览 | \`repo\` / \`commit\` / \`stack\` / \`my_use\` |
+| 大模型类卡 | \`claim\` / \`verified_at\` / \`may_expire\` |
+
+## 三、文件命名
+
+\`\`\`
+日常卡片：  <简短标题>.md              例：日前调度的滚动修正.md
+日期型：    YYYY-MM-DD-<标题>.md       例：2026-09-23-读TN-PDN联合优化.md
+文献笔记：  <citekey>.md               例：li2025evcharging.md   ← 用 citekey，永不改名
+周报：      YYYY-Www.md               例：2026-W39.md
+\`\`\`
+
+**禁止**：文件名含 \`空格 / \\ : * ? " < > |\`、超过 60 字符、用"新建文档""未命名"。
+
+## 四、卡片该放哪（路由规则）
+
+按顺序判断，**第一个命中即定**：
+
+| 判断 | 归属 |
+|---|---|
+| 只涉及 1 个领域？ | → 该领域目录 |
+| 是**用编程做领域的事**？ | → **领域目录**，加 \`prog\` 标签 |
+| 是**编程语言本身的特性**？ | → \`12-编程与工程\\\` |
+| 是**可跨领域复用的方法论**？ | → \`15-优化方法论\\\` |
+| **两个顶层领域相互增强**？ | → \`19-交叉\\\` |
+
+**一张卡只在一处存在。** 其他位置用 \`[[wikilink]]\` 指过去，**绝不复制第二份**。
+`,
+
+  'docs/工具链与操作手册.md': `---
+title: 工具链与操作手册
+type: 规范
+updated: ${new Date().toISOString().slice(0, 10)}
+---
+
+# 工具链与操作手册
+
+## 一、环境现状（2026-09-23 实测）
+
+| 工具 | 状态 |
+|---|---|
+| Obsidian | ❌ 未安装 → **阶段 1 必装** |
+| git | ✅ 2.53.0 |
+| Node | ✅ v24.16.0（脚本层用它） |
+| Python | ⚠️ 3.8.8（Anaconda，偏旧，别用它跑本库脚本） |
+| pandoc | ✅ 在 Anaconda 里 |
+| uv | ✅ 已装（阶段 4 建独立 Python 环境用） |
+| ripgrep | ❌ 缺失 → 阶段 4 装 |
+| gh (GitHub CLI) | ❌ 缺失 → 若常建仓库可装 |
+| Zotero | ✅ 已装（\`C:\\Users\\CYQ\\Zotero\`） |
+
+## 二、Obsidian 必装插件
+
+| 插件 | 用途 |
+|---|---|
+| **Templater** | 套用 \`templates/\` 里的模板新建卡片 |
+| **Dataview** | 按 frontmatter 字段生成看板 |
+| **Tag Wrangler** | 批量重命名标签，防止词表分裂 |
+
+**设置 Templater**：模板目录设为 \`templates\`。
+
+## 三、Zotero 配置
+
+1. 装 **Better BibTeX (BBT)**
+2. BBT 设置 → Citation key formula 填：
+   \`\`\`
+   auth.lower + year + shorttitle
+   \`\`\`
+   例：\`li2025evcharging\`
+3. 建 collections，对应本库子区：\`01-能量调度\` / \`02-交通流分配\` / \`暂缓\`
+4. **不在 Zotero 里做笔记**——Zotero 是仓库，Obsidian 是加工厂
+
+## 四、日常命令
+
+\`\`\`powershell
+# 新建一张卡（会自动放入正确目录、填好 frontmatter）
+node tools/new.mjs 知识卡 --domain 10-交能融合 --sub 01-能量调度 --title "题目"
+node tools/new.mjs 踩坑卡 --domain 12-编程与工程 --sub CPP --title "症状一句话"
+
+# 全库体检
+node tools/check.mjs
+
+# 每周日：清空收件箱 → 更新 NOW → check → 抽查 5 张卡 → push
+git add -A; git commit -m "weekly: 2026-W39"; git push
+\`\`\`
+
+## 五、git 远端
+
+远程名 \`origin\`，指向 GitHub 私有库（建议名 \`knowledge-base\`）。
+
+**若 push 失败**（国内网络），需让 git 走代理，端口以你的代理软件实际监听为准：
+\`\`\`powershell
+git config --global http.proxy  http://127.0.0.1:10809
+git config --global https.proxy http://127.0.0.1:10809
+# 取消代理
+git config --global --unset http.proxy
+git config --global --unset https.proxy
+\`\`\`
+
+## 六、三处 git 仓库别搞混
+
+| 位置 | 是不是 git | 备份方式 |
+|---|---|---|
+| \`E:\\知识学习\` | ✅ 本库 | push 到私有远端 |
+| \`E:\\repos\\*\` | ✅ 别人的仓库 | 不用管，可重新 clone |
+| \`E:\\projects\\*\` | ✅ 自己的代码 | **各自独立建远端**，不要并进知识库 |
+| \`C:\\Users\\CYQ\\Zotero\` | ❌ **禁止 git** | Zotero 官方同步 + 定期复制 \`zotero.sqlite\` |
+`,
+
+  // ── 40-文献 ──────────────────────────────────────────
+  '40-文献/标签体系.md': `---
+title: 标签体系（受控词表）
+type: 规范
+updated: ${new Date().toISOString().slice(0, 10)}
+---
+
+# 标签体系（受控词表）
+
+> **纪律：标签只增不改。** 需要新标签时，先在本文件里搜一遍有没有近义标签。
+> 禁止出现 \`#top/双层规划\` 和 \`#top/bilevel\` 两套并行。
+
+## 领域标签
+\`\`\`
+#dom/交能融合   #dom/大模型   #dom/编程工程   #dom/优化方法论   #dom/交叉
+\`\`\`
+
+## 类型标签
+\`\`\`
+#type/综述   #type/方法   #type/算例   #type/工具   #type/观点   #type/标准
+\`\`\`
+
+## 状态标签（与 frontmatter.status 呼应，可只用 frontmatter）
+\`\`\`
+#stat/待读   #stat/在读   #stat/已读   #stat/待复习   #stat/已掌握
+\`\`\`
+
+## 主题标签
+
+### 交能融合 · 能量调度
+\`\`\`
+#top/日前调度      #top/日内滚动      #top/实时控制
+#top/有序充电      #top/需求响应      #top/储能策略
+#top/微网能量管理   #top/光储充        #top/电氢耦合
+#top/多微网协同     #top/低碳调度
+\`\`\`
+
+### 交能融合 · 交通流分配
+\`\`\`
+#top/用户均衡      #top/系统最优      #top/Wardrop
+#top/FrankWolfe    #top/变分不等式    #top/随机均衡
+#top/动态交通分配   #top/OD估计        #top/路径选择
+#top/充电负荷预测   #top/出行需求
+\`\`\`
+
+### 耦合与网络
+\`\`\`
+#top/TN-PDN        #top/配电网潮流      #top/交通网
+#top/耦合约束      #top/网络均衡
+\`\`\`
+
+### 优化方法论
+\`\`\`
+#top/MILP          #top/MINLP         #top/双层规划
+#top/多目标        #top/随机规划      #top/分布鲁棒
+#top/鲁棒优化      #top/机会约束      #top/KKT
+#top/线性化        #top/场景生成      #top/Wasserstein
+\`\`\`
+
+### 编程与工程
+\`\`\`
+#top/移动语义      #top/模板          #top/并发
+#top/内存模型      #top/UB            #top/CMake
+#top/性能剖析      #top/sanitizer     #top/pybind11
+#top/Gurobi        #top/Pyomo         #top/CVXPY
+\`\`\`
+
+### 大模型
+\`\`\`
+#top/Transformer   #top/注意力        #top/提示工程
+#top/RAG           #top/微调          #top/对齐
+#top/智能体        #top/工具调用      #top/推理加速
+\`\`\`
+
+## 使用标签
+\`\`\`
+#prog              # 用编程解决领域问题（区别于"编程语言本身"）
+\`\`\`
+`,
+
+  '40-文献/阅读队列.md': `---
+title: 阅读队列
+type: 导航
+updated: ${new Date().toISOString().slice(0, 10)}
+---
+
+# 📖 阅读队列
+
+> 三段式：**待读 → 在读 → 已读**。一篇文章同时只能处于一段。
+> 读完不是终点——**读完要产出文献卡**，否则等于没读（见设计方案 §5.3）。
+
+## 待读
+
+| citekey | 标题 | 目标子区 | 为什么读 | 优先级 |
+|---|---|---|---|---|
+|  |  |  |  |  |
+
+## 在读
+
+| citekey | 标题 | 开始日期 | 卡在哪 |
+|---|---|---|---|
+|  |  |  |  |
+
+## 已读（已产出文献卡）
+
+| citekey | 标题 | 完成日期 | 产出的知识卡 |
+|---|---|---|---|
+|  |  |  |  |
+`,
+
+  '40-文献/索引.md': `---
+title: 文献索引
+type: 导航
+updated: ${new Date().toISOString().slice(0, 10)}
+---
+
+# 📇 文献索引
+
+> 本文件后续由 \`tools/sync-moc.mjs\` 自动生成，**手改会在下次生成时被覆盖**。
+> 现阶段先手工维护，等脚本就绪后切换。
+
+## 能量调度
+
+| citekey | 标题 | 年份 | 期刊 | 文献卡 | 状态 |
+|---|---|---|---|---|---|
+|  |  |  |  |  |  |
+
+## 交通流分配
+
+| citekey | 标题 | 年份 | 期刊 | 文献卡 | 状态 |
+|---|---|---|---|---|---|
+|  |  |  |  |  |  |
+
+## 暂缓（09-其他）
+
+| citekey | 标题 | 年份 | 期刊 | 文献卡 | 状态 |
+|---|---|---|---|---|---|
+|  |  |  |  |  |  |
+`,
+
+  // ── 50-代码项目 ──────────────────────────────────────
+  '50-代码项目/项目清单.md': `---
+title: 代码项目清单
+type: 导航
+updated: ${new Date().toISOString().slice(0, 10)}
+---
+
+# 🧩 代码项目清单
+
+> 源码放 \`E:\\repos\\\`（第三方）或 \`E:\\projects\\\`（自己的），**不放库内**。
+> 这里只登记：项目 → 我学到了什么。
+
+| 项目 | 来源 | 技术栈 | 我学到了什么 | 状态 | 笔记 |
+|---|---|---|---|---|---|
+|  |  |  |  |  |  |
+`,
+
+  // ── 60-学习计划 ──────────────────────────────────────
+  '60-学习计划/里程碑.md': `---
+title: 里程碑
+type: 导航
+updated: ${new Date().toISOString().slice(0, 10)}
+---
+
+# 🏁 里程碑
+
+> 只登记**可验证的成果**，不登记"学习了 X"这类无法验证的表述。
+
+| 日期 | 里程碑 | 验收证据 |
+|---|---|---|
+|  | 骨架建成，git 远端可 push | GitHub 上能看到文件 |
+|  | 第一批文献卡产出 | 5 篇文献卡 + 对应知识卡 |
+
+## 全库统计（手工更新，等 review.mjs 就绪后自动化）
+
+| 指标 | 数值 |
+|---|---|
+| 知识卡 | 0 |
+| 永久卡 | 0 |
+| 问题卡 | 0 |
+| 文献卡 | 0 |
+| 收件箱积压 | 0 |
+`,
+};
+
+// ─────────────────────────────────────────────────────────
+// 模板
+// ─────────────────────────────────────────────────────────
+const today = new Date().toISOString().slice(0, 10);
+
+const TEMPLATES = {
+  '知识卡.md': `---
+title:       <% tp.file.title %>
+type:        知识卡
+domain:      <% await tp.system.suggester(["10-交能融合","11-大模型","12-编程与工程","15-优化方法论","19-交叉","20-永久卡"], ["10-交能融合","11-大模型","12-编程与工程","15-优化方法论","19-交叉","20-永久卡"]) %>
+subdomain:   
+tags:        []
+status:      learning
+created:     ${today}
+updated:     ${today}
+source:      
+prereq:      []
+used_in:     []
+confidence:  3
+reviewed:    
+---
+
+# <% tp.file.title %>
+
+## 一句话
+> 不看原文，用我自己的话讲一遍。（写不出来 → status 保持 learning）
+
+## 展开
+
+### 它是什么
+
+### 为什么是这样（机制/理由）
+
+### 什么时候会失效（边界条件）
+
+## 前置知识
+- [[]]
+
+## 我在哪里用过
+- 
+
+## 关联
+- [[]]
+
+## 待验证
+- [ ] 
+`,
+
+  '永久卡.md': `---
+title:       <% tp.file.title %>
+type:        永久卡
+domain:      20-永久卡
+tags:        []
+status:      learning
+created:     ${today}
+updated:     ${today}
+derived_from: []
+confidence:  3
+reviewed:    
+---
+
+# <% tp.file.title %>
+
+## 核心洞见
+> 一句能被别的场景复用的话。**不能迁移的结论，不是永久卡，是知识卡。**
+
+## 它把哪些东西连起来了
+
+| 来源卡 | 它贡献了什么 |
+|---|---|
+| [[]] |  |
+
+## 它改变了我的什么判断 / 做法
+
+## 反例与边界
+> 这条洞见什么时候不成立？
+
+## 关联
+- [[]]
+`,
+
+  '问题卡.md': `---
+title:       <% tp.file.title %>
+type:        问题卡
+domain:      30-问题卡
+tags:        []
+status:      learning
+created:     ${today}
+updated:     ${today}
+hypothesis:  
+verify_by:   
+conclusion:  
+closed_at:   
+---
+
+# ❓ <% tp.file.title %>
+
+## 问题描述
+> 要具体到能设计一个验证动作。"怎么学好优化"不是问题，"双层规划什么时候能转成单层"是。
+
+## 当前理解
+> 现在我认为答案是……
+
+## 假设
+> 
+
+## 验证方式
+说明用什么办法证明或推翻：
+- [ ] 
+
+## 结论
+> 验证完成后回来填。填完记得：**结论若可迁移，升级成永久卡。**
+
+## 关联
+- [[]]
+`,
+
+  '文献卡.md': `---
+title:       <% tp.file.title %>
+type:        文献卡
+domain:      10-交能融合
+subdomain:   
+tags:        []
+status:      inbox
+created:     ${today}
+updated:     ${today}
+source:      zotero:
+problem:     
+method:      
+network:     
+solver:      
+data:        
+gap:         
+confidence:  3
+reviewed:    
+---
+
+# <% tp.file.title %>
+
+> citekey：\`\` · 期刊： · 年份：
+> 元数据以 Zotero 为准，此处不重复记录。
+
+## 作者主张什么（一句话）
+
+## 用什么方法证明
+
+## 关键建模细节
+> 只记**能复现**的细节：目标函数、约束类型、求解规模、关键假设。
+
+## 实验与算例
+- 数据来源：
+- 对比基准：
+- 主要结果：
+
+## 局限与我没被说服的地方
+
+## 对我有什么用
+> 空着很正常。**空着不代表要删，代表还没想清楚——这才是要解决的问题。**
+
+## 由此产出的知识卡
+- [[]]
+
+## 关联
+- [[]]
+`,
+
+  '踩坑卡.md': `---
+title:       <% tp.file.title %>
+type:        踩坑卡
+domain:      12-编程与工程
+subdomain:   CPP
+tags:        []
+status:      learning
+created:     ${today}
+updated:     ${today}
+symptom:     
+cause:       
+minimal_repro: 
+source:      
+---
+
+# 🐛 <% tp.file.title %>
+
+## 症状
+> 写在**报错信息里能搜到的字**。下次遇到同样的错误，靠这句话命中。
+
+\`\`\`
+（粘贴报错原文）
+\`\`\`
+
+## 最小复现
+> 代码放 \`90-附件/cpp-snippets/<卡名>.cpp\`，必须**能编译**。
+> 不能最小化复现，说明根因还没找到。
+
+\`\`\`cpp
+// 最小可编译片段
+\`\`\`
+
+## 根因
+> 说清**机制**，不只是"这样写就好了"。
+
+## 正确写法
+
+## 为什么容易踩
+> 哪些直觉会把人带到这个坑里？
+
+## 一行速查
+\`\`\`
+症状关键词 → 原因关键词 → 解法关键词
+\`\`\`
+
+## 关联
+- [[]]
+`,
+
+  '项目速览.md': `---
+title:       <% tp.file.title %>
+type:        项目速览
+domain:      50-代码项目
+tags:        []
+status:      learning
+created:     ${today}
+updated:     ${today}
+repo:        
+commit:      
+stack:       
+my_use:      
+---
+
+# 🧩 <% tp.file.title %>
+
+> 源码位置：\`E:\\repos\\<name>\`（**不放库内**）
+> \`\`\`
+> repo:   <url>
+> commit: <hash>   ← 必须记！否则半年后笔记与源码对不上
+> \`\`\`
+
+## 它解决什么问题（一句话）
+
+## 为什么值得看
+
+## 技术栈与规模
+- 语言：
+- 构建：
+- 代码行数：
+- 依赖：
+
+## 入口在哪
+| 文件 | 关键函数/类 | 作用 |
+|---|---|---|
+|  |  |  |
+
+## 我打算怎么用 / 改它
+
+## 可借鉴的设计
+
+## 源码导读
+→ [[源码导读]]
+
+## 关联
+- [[]]
+`,
+
+  '周报.md': `---
+title:       <% tp.file.title %>
+type:        周报
+domain:      60-学习计划
+created:     ${today}
+updated:     ${today}
+---
+
+# 周报 <% tp.file.title %>
+
+## 本周产出
+| 类型 | 数量 | 说明 |
+|---|---|---|
+| 知识卡 |  |  |
+| 文献卡 |  |  |
+| 永久卡 |  |  |
+| 问题卡 |  |  |
+| 踩坑卡 |  |  |
+
+## 本周真正搞懂的一件事
+> 如果这一栏空着，这周就等于没学。
+
+## 卡住的地方
+> 每条都该转成一张问题卡。
+
+## 下周的 3 件事
+1. 
+2. 
+3. 
+
+## 维护记录
+- [ ] 收件箱已清空
+- [ ] NOW.md 已更新
+- [ ] check.mjs 已跑
+- [ ] 抽查 5 张旧卡
+- [ ] 已 push
+`,
+};
+
+// ─────────────────────────────────────────────────────────
+// 执行
+// ─────────────────────────────────────────────────────────
+let dirCount = 0;
+let skipCount = 0;
+
+for (const d of DIRS) {
+  const abs = join(ROOT, d);
+  if (existsSync(abs)) {
+    skipCount++;
+  } else {
+    mkdirSync(abs, { recursive: true });
+    dirCount++;
+  }
+  // 空目录占位
+  const keepFile = join(abs, '.gitkeep');
+  if (!existsSync(keepFile)) writeFileSync(keepFile, keep(join(ROOT.split(/[\\/]/).pop(), d)), 'utf8');
+}
+
+let fileCount = 0;
+let fileSkip = 0;
+for (const [rel, content] of Object.entries(FILES)) {
+  const abs = join(ROOT, rel);
+  mkdirSync(dirname(abs), { recursive: true });
+  if (existsSync(abs)) {
+    fileSkip++;
+    continue;
+  }
+  writeFileSync(abs, content, 'utf8');
+  fileCount++;
+}
+
+let tplCount = 0;
+let tplSkip = 0;
+mkdirSync(join(ROOT, 'templates'), { recursive: true });
+for (const [name, content] of Object.entries(TEMPLATES)) {
+  const abs = join(ROOT, 'templates', name);
+  if (existsSync(abs)) {
+    tplSkip++;
+    continue;
+  }
+  writeFileSync(abs, content, 'utf8');
+  tplCount++;
+}
+
+console.log('✅ 骨架初始化完成');
+console.log(`   目录：新建 ${dirCount}，已存在跳过 ${skipCount}`);
+console.log(`   文件：新建 ${fileCount}，已存在跳过 ${fileSkip}`);
+console.log(`   模板：新建 ${tplCount}，已存在跳过 ${tplSkip}`);
+if (dirCount === 0 && fileCount === 0 && tplCount === 0) {
+  console.log('   （全部已存在，无需改动——本脚本幂等）');
+}

@@ -1,0 +1,40 @@
+---
+title:       双层规划的KKT转化条件
+type:        知识卡
+domain:      15-优化方法论
+subdomain:   建模范式
+tags:        []
+status:      learning
+created:     2026-09-23
+updated:     2026-09-23
+source:      
+prereq:      []
+used_in:     []
+confidence:  3
+reviewed:    
+---
+
+# 双层规划的KKT转化条件
+
+## 一句话
+> 不看原文，用我自己的话讲一遍。（写不出来 → status 保持 learning）
+
+## 展开
+
+### 它是什么
+
+### 为什么是这样（机制/理由）
+
+### 什么时候会失效（边界条件）
+
+## 前置知识
+- [[]]
+
+## 我在哪里用过
+- 
+
+## 关联
+- [[]]
+
+## 待验证
+- [ ] 
