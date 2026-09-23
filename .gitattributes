@@ -1,0 +1,22 @@
+# 统一行尾，避免 Windows 上每次提交都报 LF/CRLF 警告
+* text=auto eol=lf
+
+# 二进制文件不做行尾转换
+*.pdf  binary
+*.zip  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.mp4  binary
+*.xlsx binary
+*.docx binary
+
+# 脚本与配置文件强制 LF
+*.mjs  text eol=lf
+*.js   text eol=lf
+*.ps1  text eol=crlf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf

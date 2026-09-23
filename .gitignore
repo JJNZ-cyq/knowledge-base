@@ -21,5 +21,11 @@ desktop.ini
 *.tmp
 *.bak
 
+# ─── 日志（运行环境与工具会生成，不要入库）───
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+
 # ─── Node ───
 node_modules/
