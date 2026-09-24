@@ -10,24 +10,103 @@
   "user_scripts_folder": "",
   "folder_templates": [
     {
+      "folder": "00-收件箱",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "00-收件箱/剪藏",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "00-收件箱/待读",
+      "template": "templates/知识卡.md"
+    },
+    {
       "folder": "00-收件箱/灵感",
       "template": "templates/知识卡.md"
     },
     {
-      "folder": "30-问题卡",
-      "template": "templates/问题卡.md"
+      "folder": "10-交能融合/01-能量调度/文献笔记",
+      "template": "templates/文献卡.md"
+    },
+    {
+      "folder": "10-交能融合/01-能量调度/知识卡",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "10-交能融合/02-交通流分配/文献笔记",
+      "template": "templates/文献卡.md"
+    },
+    {
+      "folder": "10-交能融合/02-交通流分配/知识卡",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "10-交能融合/项目笔记",
+      "template": "templates/项目速览.md"
+    },
+    {
+      "folder": "11-大模型/文献笔记",
+      "template": "templates/文献卡.md"
+    },
+    {
+      "folder": "11-大模型/知识卡",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "11-大模型/项目笔记",
+      "template": "templates/项目速览.md"
+    },
+    {
+      "folder": "12-编程与工程/CPP/工程实践",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "12-编程与工程/CPP/语言特性",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "12-编程与工程/Python/优化建模",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "12-编程与工程/Python/科学计算",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "12-编程与工程/Python/语言与生态",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "12-编程与工程/混合栈",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "12-编程与工程/项目笔记",
+      "template": "templates/项目速览.md"
+    },
+    {
+      "folder": "15-优化方法论/不确定性",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "15-优化方法论/建模范式",
+      "template": "templates/知识卡.md"
+    },
+    {
+      "folder": "15-优化方法论/求解与工具",
+      "template": "templates/知识卡.md"
     },
     {
       "folder": "20-永久卡",
       "template": "templates/永久卡.md"
-    }
-  ],
-  "file_templates": [
+    },
     {
-      "regex": ".*",
-      "template": "templates/知识卡.md"
+      "folder": "30-问题卡",
+      "template": "templates/问题卡.md"
     }
   ],
+  "file_templates": [],
   "syntax_highlighting": true,
   "syntax_highlighting_mobile": false,
   "enabled_templates_hotkeys": [],
