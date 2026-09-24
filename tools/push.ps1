@@ -1,11 +1,21 @@
-# push.ps1 —— 一键推送到 GitHub（每周日维护的最后一步）
+# push.ps1 -- one-command push to GitHub (last step of the weekly Sunday routine)
 #
-# 用法（在你自己的终端里运行，不是 Agent 环境）：
+# Usage (run in YOUR OWN terminal, not the agent environment):
 #     .\tools\push.ps1
-#     .\tools\push.ps1 "weekly: 2026-W39"     # 自定义提交信息
+#     .\tools\push.ps1 "weekly: 2026-W39"     # custom commit message
 #
-# 为什么需要这个脚本：Agent 沙箱禁止出站 TLS，push 只能由你本机执行。
-# 本脚本会自动：暂存全部改动 → 提交（若无改动则跳过）→ 推送。
+# Why this script exists: the agent sandbox blocks outbound TLS, so `git push`
+# can only run on your machine.
+#
+# NOTE ON ENCODING: every Write-Host string below is intentionally ASCII.
+# PowerShell 5.1 reads a .ps1 file as ANSI(GBK) when it has no BOM, which
+# would garble non-ASCII output. Chinese comments are safe because comments
+# never affect execution.
+#
+# 中文说明：
+#   本脚本自动完成：暂存全部改动 -> 提交（无改动则跳过）-> 推送。
+#   输出文字刻意只用 ASCII：PowerShell 5.1 对无 BOM 的 .ps1 会按 GBK 读取，
+#   中文输出会乱码；注释里的中文不影响运行，所以保留。
 
 param(
     [string]$Message = ""
@@ -16,44 +26,45 @@ $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
 Write-Host ""
-Write-Host "=== 知识库推送 ===" -ForegroundColor Cyan
+Write-Host "=== Knowledge base push ===" -ForegroundColor Cyan
 
-# ── 1. 检查 remote ───────────────────────────────────────
+# -- 1. check remote ---------------------------------------------------
 $remote = git config --get remote.origin.url
 if (-not $remote) {
-    Write-Host "❌ 未配置远端。先运行：" -ForegroundColor Red
-    Write-Host "     node tools/remote.mjs <你的GitHub用户名>"
+    Write-Host "[X] No remote configured. Run this first:" -ForegroundColor Red
+    Write-Host "      node tools/remote.mjs <your-github-username>"
     exit 1
 }
-Write-Host "远端: $remote"
+Write-Host "remote: $remote"
+Write-Host "branch: $(git rev-parse --abbrev-ref HEAD)"
 
-# ── 2. 提交改动 ─────────────────────────────────────────
+# -- 2. commit changes -------------------------------------------------
 git add -A
 $staged = git diff --cached --name-only
 if ($staged) {
     $count = ($staged | Measure-Object).Count
     if (-not $Message) {
-        $Message = "notes: 更新 $count 个文件 ($(Get-Date -Format 'yyyy-MM-dd HH:mm'))"
+        $Message = "notes: update $count file(s) ($(Get-Date -Format 'yyyy-MM-dd HH:mm'))"
     }
     git commit -q -m $Message
-    Write-Host "✅ 已提交 $count 个文件的改动" -ForegroundColor Green
-    Write-Host "   提交信息: $Message"
+    Write-Host "[OK] committed $count file(s)" -ForegroundColor Green
+    Write-Host "     message: $Message"
 } else {
-    Write-Host "ℹ️  没有新改动需要提交" -ForegroundColor Yellow
+    Write-Host "[--] nothing new to commit" -ForegroundColor Yellow
 }
 
-# ── 3. 推送 ─────────────────────────────────────────────
-Write-Host ""
-Write-Host "正在推送…" -ForegroundColor Cyan
-
-# 判断是否首次推送：origin/main 这个远程跟踪引用在第一次 fetch/push 前并不存在，
-# 此时必须用 -u 建立跟踪，裸跑 git push 会直接报 "no upstream configured"。
+# -- 3. push -----------------------------------------------------------
+# Detect first push: refs/remotes/origin/main does not exist before the first
+# fetch/push, and a bare `git push` then fails with "no upstream configured".
+# So use -u on the very first run only.
 $isFirstPush = $false
 git rev-parse --verify --quiet refs/remotes/origin/main *> $null
 if ($LASTEXITCODE -ne 0) { $isFirstPush = $true }
 
+Write-Host ""
+Write-Host "pushing..." -ForegroundColor Cyan
 if ($isFirstPush) {
-    Write-Host "（检测到首次推送，正在建立分支跟踪）"
+    Write-Host "(first push detected, setting up branch tracking)"
     git push -u origin main
 } else {
     git push
@@ -61,20 +72,26 @@ if ($isFirstPush) {
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""
-    Write-Host "✅ 推送成功，异地备份已完成" -ForegroundColor Green
-
-} else {
+    Write-Host "[OK] push succeeded - offsite backup is up to date" -ForegroundColor Green
     Write-Host ""
-    Write-Host "❌ 推送失败" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "常见原因与对策："
-    Write-Host "  1) 需要凭据 → 用 Personal Access Token（不是账号密码）"
-    Write-Host "     GitHub → Settings → Developer settings → Personal access tokens → 勾 repo"
-    Write-Host "  2) 网络不通 → 先启动你的代理软件，再执行："
-    Write-Host "       git config --global http.proxy  http://127.0.0.1:<端口>"
-    Write-Host "       git config --global https.proxy http://127.0.0.1:<端口>"
-    Write-Host "     端口以 v2rayN / clash 实际监听为准（常见 10809 / 7890）"
-    Write-Host "  3) 远端有本地没有的提交（比如你在网页上改过文件）→ 先执行："
-    Write-Host "       git pull --rebase origin main"
-    exit 1
+    exit 0
 }
+
+Write-Host ""
+Write-Host "[X] push FAILED" -ForegroundColor Red
+Write-Host ""
+Write-Host "Common causes and fixes:"
+Write-Host ""
+Write-Host "  1) Credentials needed -> use a Personal Access Token, NOT your password"
+Write-Host "     GitHub -> Settings -> Developer settings -> Personal access tokens"
+Write-Host "     Scope: repo.  Windows Credential Manager will remember it."
+Write-Host ""
+Write-Host "  2) Network blocked -> start your proxy (v2rayN / clash) first, then:"
+Write-Host "       git config --global http.proxy  http://127.0.0.1:<port>"
+Write-Host "       git config --global https.proxy http://127.0.0.1:<port>"
+Write-Host "     Check which port your proxy actually listens on (often 10809 / 7890)."
+Write-Host ""
+Write-Host "  3) Remote has commits you do not have (e.g. you edited files on the web):"
+Write-Host "       git pull --rebase origin main"
+Write-Host ""
+exit 1

@@ -16,7 +16,8 @@
 # 脚本与配置文件强制 LF
 *.mjs  text eol=lf
 *.js   text eol=lf
-*.ps1  text eol=crlf
 *.json text eol=lf
 *.yml  text eol=lf
 *.yaml text eol=lf
+
+*.ps1  text eol=crlf
