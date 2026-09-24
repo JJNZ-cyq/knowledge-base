@@ -9,7 +9,7 @@ created:     2026-09-24
 updated:     2026-09-24
 source:      
 prereq:      []
-used_in:     ["编程学习路径 阶段1"]
+used_in:     ["Python 学习计划"]
 confidence:  5
 reviewed:    2026-09-24
 ---
