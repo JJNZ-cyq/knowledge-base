@@ -1,4 +1,4 @@
-﻿# push.ps1 —— 一键推送到 GitHub（每周日维护的最后一步）
+# push.ps1 —— 一键推送到 GitHub（每周日维护的最后一步）
 #
 # 用法（在你自己的终端里运行，不是 Agent 环境）：
 #     .\tools\push.ps1
@@ -45,10 +45,24 @@ if ($staged) {
 # ── 3. 推送 ─────────────────────────────────────────────
 Write-Host ""
 Write-Host "正在推送…" -ForegroundColor Cyan
-git push origin main
+
+# 判断是否首次推送：origin/main 这个远程跟踪引用在第一次 fetch/push 前并不存在，
+# 此时必须用 -u 建立跟踪，裸跑 git push 会直接报 "no upstream configured"。
+$isFirstPush = $false
+git rev-parse --verify --quiet refs/remotes/origin/main *> $null
+if ($LASTEXITCODE -ne 0) { $isFirstPush = $true }
+
+if ($isFirstPush) {
+    Write-Host "（检测到首次推送，正在建立分支跟踪）"
+    git push -u origin main
+} else {
+    git push
+}
+
 if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "✅ 推送成功，异地备份已完成" -ForegroundColor Green
+
 } else {
     Write-Host ""
     Write-Host "❌ 推送失败" -ForegroundColor Red
