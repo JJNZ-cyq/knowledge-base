@@ -50,27 +50,37 @@ const NEEDS_DOMAIN = new Set(['知识卡', '文献卡', '永久卡', '问题卡'
 // 允许孤立的文件类型（导航、索引、规范类天生无入链）
 const ALLOW_ORPHAN_TYPES = new Set(['导航', '规范', '周报', 'MOC']);
 
-// ── 递归收集 .md ────────────────────────────────────────
-/** @returns {string[]} 相对 ROOT 的路径，用 / 分隔 */
-function walk(dir, out = []) {
+// ── 递归收集文件 ────────────────────────────────────────
+/**
+ * 同时收集两类文件：
+ *   mdFiles   —— 参与 frontmatter / 断链 / 孤立 检查的笔记
+ *   allFiles  —— md + 非 md（.ps1/.mjs/.cpp/.pdf…），只用于解析 wikilink 目标
+ *
+ * 为什么要收非 md：本库会在文档里写 [[tools/push.ps1]] 这类指向脚本的链接，
+ * 若解析表里只有 md，就会把它们全部误判成断链。
+ */
+function walk(dir, mdFiles = [], allFiles = [], skipNames = SKIP_DIRS) {
   let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
   } catch {
-    return out;
+    return { mdFiles, allFiles };
   }
   for (const e of entries) {
     if (e.isDirectory()) {
-      if (SKIP_DIRS.has(e.name)) continue;
-      walk(join(dir, e.name), out);
-    } else if (e.isFile() && extname(e.name) === '.md' && e.name !== '.gitkeep') {
-      out.push(relative(ROOT, join(dir, e.name)).split('\\').join('/'));
+      // 根目录下的 tools 要参与（里面有脚本可被链接），其余跳过项照旧
+      if (skipNames.has(e.name) && !(e.name === 'tools' && dir === ROOT)) continue;
+      walk(join(dir, e.name), mdFiles, allFiles, skipNames);
+    } else if (e.isFile() && e.name !== '.gitkeep') {
+      const rel = relative(ROOT, join(dir, e.name)).split('\\').join('/');
+      allFiles.push(rel);
+      if (extname(e.name) === '.md') mdFiles.push(rel);
     }
   }
-  return out;
+  return { mdFiles, allFiles };
 }
 
-const files = walk(ROOT);
+const { mdFiles: files, allFiles } = walk(ROOT);
 
 // ── 解析 frontmatter ────────────────────────────────────
 /**
@@ -97,13 +107,24 @@ function parse(file) {
 }
 
 // ── 建立索引 ────────────────────────────────────────────
-const notes = new Map(); // basename(无扩展名, 小写) → 相对路径
+/**
+ * 链接解析表：kebab 化的名字 → 相对路径。
+ * 同时登记两种 key，让 [[知识卡]] 与 [[templates/知识卡.md]] 都能解析：
+ *   · basename 去扩展名  →  知识卡
+ *   · 完整路径（小写）    →  templates/知识卡.md
+ */
+const notes = new Map();
 const parsed = new Map(); // 相对路径 → {fm, body}
 const linksOut = new Map(); // 相对路径 → 出链名[]
 
+for (const f of allFiles) {
+  const keys = [basename(f, extname(f)).toLowerCase(), f.toLowerCase()];
+  for (const k of keys) {
+    if (k && !notes.has(k)) notes.set(k, f);
+  }
+}
+
 for (const f of files) {
-  const key = basename(f, '.md').toLowerCase();
-  if (!notes.has(key)) notes.set(key, f);
   const p = parse(f);
   parsed.set(f, p);
 
@@ -126,6 +147,7 @@ const info = [];
 
 const inlinks = new Map(); // 相对路径 → 入链数
 for (const f of files) inlinks.set(f, 0);
+for (const f of allFiles) if (!inlinks.has(f)) inlinks.set(f, 0);
 
 // 1 & 2 & 7：单文件检查
 for (const f of files) {

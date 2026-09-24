@@ -49,7 +49,9 @@ const changed = [];
 
 const writeIfChanged = (file, content) => {
   const abs = join(OBS, file);
-  const next = JSON.stringify(content, null, 2) + '\n';
+  // 【重要】不要加末尾换行：Obsidian 自己重写 JSON 时不带 \n，
+  // 如果我们带，Obsidian 每次保存都会产生一个"只差换行"的无意义 diff。
+  const next = JSON.stringify(content, null, 2);
   if (existsSync(abs) && readFileSync(abs, 'utf8') === next) return false;
   writeFileSync(abs, next, 'utf8');
   changed.push(file);
