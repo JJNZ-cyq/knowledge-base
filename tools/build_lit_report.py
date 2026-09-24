@@ -9,7 +9,13 @@ build_lit_report.py -- 由分类结果生成文献地图报告（可重复生成
 import sys
 from collections import defaultdict
 
-INTRO = """# 文献地图
+INTRO = """---
+title: 文献分类报告
+type: 导航
+updated: 2026-09-24
+---
+
+# 文献地图
 
 > 本文件由 `tools/build_lit_report.py` 自动生成，**不要手改**，改脚本后重新生成。
 > 生成依据：`literature/文献分类.tsv`
