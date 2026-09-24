@@ -22,15 +22,27 @@
 ## 常驻命令
 
 ```powershell
+# 新建卡片（自动放入正确目录、填好 frontmatter）
 node tools/new.mjs 知识卡 --domain 10-交能融合 --sub 01-能量调度 --title "日前调度的滚动修正"
 node tools/new.mjs 踩坑卡 --domain 12-编程与工程 --sub CPP --title "shared_ptr 循环引用不释放"
-node tools/check.mjs          # 体检：断链、孤立卡、frontmatter 缺失、收件箱积压
-node tools/init.mjs           # 建骨架（幂等，不会覆盖已有内容）
-node tools/remote.mjs jjnz    # 一次性：配 GitHub 私有远端
+
+# 全库体检：断链、孤立卡、frontmatter 缺失、收件箱积压
+node tools/check.mjs
+
+# 推送到 GitHub（每周日最后一步）
+tools\push.cmd
+
+# 其他
+node tools/init.mjs              # 建骨架（幂等，不覆盖已有内容）
+node tools/setup-obsidian.mjs    # 重配 Obsidian（--templater / --native 切换模板版本）
 ```
 
 > 不带 `--title` 运行时进入交互模式，逐项询问。
 > 卡型：`知识卡 | 永久卡 | 问题卡 | 文献卡 | 踩坑卡 | 项目速览`
+
+> **为什么推送用 `push.cmd` 而不是 `push.ps1`**：
+> 本机 PowerShell 执行策略为默认的 `Restricted`，直接跑 `.ps1` 会报"禁止运行脚本"。
+> `push.cmd` 内部带了 `-ExecutionPolicy Bypass`，不需要你改系统安全设置。
 
 ---
 
