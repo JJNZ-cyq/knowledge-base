@@ -1,0 +1,15 @@
+{
+  "useMarkdownLinks": false,
+  "alwaysUpdateLinks": true,
+  "newFileLocation": "folder",
+  "attachmentFolderPath": "90-附件",
+  "trashOption": "local",
+  "showLineNumber": true,
+  "readableLineLength": false,
+  "strictLineBreaks": true,
+  "defaultViewMode": "source",
+  "promptDelete": true,
+  "userIgnoreFilters": [
+    "templates/"
+  ]
+}

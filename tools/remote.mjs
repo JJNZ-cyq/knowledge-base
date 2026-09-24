@@ -38,18 +38,33 @@ if (!user) {
 }
 
 const url = `https://github.com/${user}/${repo}.git`;
-const run = (cmd) => execSync(cmd, { cwd: ROOT, stdio: 'pipe', encoding: 'utf8' }).trim();
 
-// 查看现有 remote
-let remotes = '';
+/**
+ * 运行 git 命令。
+ *
+ * 注意：必须在沙箱环境下也能工作，所以【不能】用 stdio:'pipe' 捕获输出
+ * ——沙箱禁止程序通过管道读取另一程序的输出，git 会直接崩在
+ *   "couldn't create signal pipe, Win32 error 5"。
+ * 因此这里用 stdio:'inherit'（输出直接进终端），只关心退出码。
+ */
+const run = (cmd) => execSync(cmd, { cwd: ROOT, stdio: 'inherit' });
+
+// 查看现有 remote：用 git config 查，避免解析输出
+let hasOrigin = false;
 try {
-  remotes = run('git remote -v');
+  execSync('git config --get remote.origin.url', { cwd: ROOT, stdio: 'ignore' });
+  hasOrigin = true;
+} catch {
+  // 非 0 退出：要么没配 origin，要么不是 git 仓库，下面再判断
+}
+try {
+  execSync('git rev-parse --git-dir', { cwd: ROOT, stdio: 'ignore' });
 } catch {
   console.error('❌ 这里不是 git 仓库，请先在库根目录执行 git init');
   process.exit(1);
 }
 
-if (remotes.includes('origin')) {
+if (hasOrigin) {
   console.log('⚠️  origin 已存在，将替换为：' + url);
   try { run('git remote remove origin'); } catch { /* ignore */ }
 }
